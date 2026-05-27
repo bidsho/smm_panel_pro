@@ -1,0 +1,69 @@
+{% extends "layouts/base.html" %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card border-0 shadow-sm" style="border-radius: 15px;">
+            <div class="card-body p-4">
+                <h4 class="fw-bold mb-4"><i class="fas fa-cart-plus text-primary me-2"></i> Place New Order</h4>
+                
+                <form method="POST" id="orderForm">
+                    {% csrf_token %}
+                    
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Select Service</label>
+                        <select name="service" id="serviceSelect" class="form-select p-3" required>
+                            <option value="" data-price="0">Choose a service...</option>
+                            {% for service in services %}
+                            <option value="{{ service.id }}" data-price="{{ service.get_naira_price }}">
+                                {{ service.name }} - ₦{{ service.get_naira_price }} per 1k
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Target Link</label>
+                        <input type="url" name="link" class="form-control p-3" placeholder="https://instagram.com/p/..." required>
+                    </div>
+
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Quantity</label>
+                        <input type="number" name="quantity" id="quantityInput" class="form-control p-3" placeholder="Min: 100" required>
+                    </div>
+
+                    <div class="alert alert-info border-0 d-flex justify-content-between align-items-center">
+                        <span class="fw-bold">Total Charge:</span>
+                        <h4 class="mb-0 fw-bold">₦<span id="totalCharge">0.00</span></h4>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary w-100 p-3 fw-bold shadow-sm" style="border-radius: 10px;">
+                        Place Order
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const serviceSelect = document.getElementById('serviceSelect');
+    const quantityInput = document.getElementById('quantityInput');
+    const totalCharge = document.getElementById('totalCharge');
+
+    function calculateCost() {
+        const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
+        // Note: selectedOption might be undefined if not selected
+        if (!selectedOption) return;
+        
+        const pricePer1k = parseFloat(selectedOption.getAttribute('data-price')) || 0;
+        const quantity = parseFloat(quantityInput.value) || 0;
+        
+        const cost = (pricePer1k / 1000) * quantity;
+        totalCharge.innerText = cost.toFixed(2);
+    }
+
+    serviceSelect.addEventListener('change', calculateCost);
+    quantityInput.addEventListener('input', calculateCost);
+</script>
+{% endblock %}
