@@ -1,59 +1,104 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from .models import Country, NumberService, PurchasedNumber
+from .models import PurchasedNumber, Country
 from . import fivesim
+from decimal import Decimal
+
+
+SERVICES = [
+    {'key': 'whatsapp', 'label': 'WhatsApp', 'icon': 'fab fa-whatsapp', 'color': 'text-success'},
+    {'key': 'telegram', 'label': 'Telegram', 'icon': 'fab fa-telegram', 'color': 'text-primary'},
+    {'key': 'gmail', 'label': 'Gmail', 'icon': 'fas fa-envelope', 'color': 'text-danger'},
+    {'key': 'facebook', 'label': 'Facebook', 'icon': 'fab fa-facebook', 'color': 'text-primary'},
+    {'key': 'twitter', 'label': 'Twitter/X', 'icon': 'fab fa-twitter', 'color': 'text-info'},
+    {'key': 'instagram', 'label': 'Instagram', 'icon': 'fab fa-instagram', 'color': 'text-danger'},
+]
 
 
 @login_required
 def number_list(request):
-    countries = Country.objects.filter(active=True)
-    selected_country = request.GET.get('country')
-    services = []
+    selected_country = request.GET.get('country', '')
+    selected_service = request.GET.get('service', 'whatsapp')
+    products = []
+    countries_data = {}
 
-    if selected_country:
-        services = NumberService.objects.filter(
-            country__code=selected_country,
-            active=True
-        )
+    try:
+        countries_data = fivesim.get_countries()
+    except Exception:
+        messages.error(request, 'Failed to load countries. Please try again.')
+
+    if selected_country and selected_service:
+        try:
+            raw_products = fivesim.get_products(selected_country, selected_service)
+            service_data = raw_products.get(selected_service, {})
+            if service_data:
+                products = [{
+                    'country': selected_country,
+                    'service': selected_service,
+                    'price_usd': service_data.get('Cost', 0),
+                    'price_ngn': fivesim.calculate_price(service_data.get('Cost', 0)),
+                    'count': service_data.get('Count', 0),
+                }]
+        except Exception:
+            messages.error(request, 'Failed to load products.')
 
     return render(request, 'virtual_numbers/number_list.html', {
-        'countries': countries,
-        'services': services,
+        'countries': countries_data,
+        'services': SERVICES,
+        'products': products,
         'selected_country': selected_country,
+        'selected_service': selected_service,
     })
 
 
 @login_required
-def buy_number(request, service_id):
-    service = get_object_or_404(NumberService, pk=service_id, active=True)
+def buy_number(request):
+    country = request.GET.get('country')
+    service = request.GET.get('service')
+
+    if not country or not service:
+        return redirect('virtual_numbers:number_list')
+
+    try:
+        raw_products = fivesim.get_products(country, service)
+        service_data = raw_products.get(service, {})
+        price_ngn = Decimal(str(fivesim.calculate_price(service_data.get('Cost', 0))))
+    except Exception:
+        messages.error(request, 'Failed to get price.')
+        return redirect('virtual_numbers:number_list')
+
     wallet = request.user.wallet
 
     if request.method == 'POST':
-        if wallet.balance < service.price:
+        if wallet.balance < price_ngn:
             messages.error(request, 'Insufficient wallet balance.')
             return redirect('virtual_numbers:number_list')
 
-        result = fivesim.buy_number(
-            country=service.country.code,
-            service=service.service
-        )
+        result = fivesim.buy_number(country, service)
 
         if 'id' not in result:
             messages.error(request, f'Failed: {result.get("message", "Unknown error")}')
             return redirect('virtual_numbers:number_list')
 
-        wallet.balance -= service.price
+        # Deduct wallet
+        wallet.balance -= price_ngn
         wallet.save()
+
+        # Get or create country
+        country_obj, _ = Country.objects.get_or_create(
+            code=country,
+            defaults={'name': country.title()}
+        )
 
         purchased = PurchasedNumber.objects.create(
             user=request.user,
-            country=service.country,
-            service=service.service,
+            country=country_obj,
+            service=service,
             phone_number=result['phone'],
-            provider=service.provider,
+            provider='5sim',
             provider_order_id=str(result['id']),
-            price=service.price,
+            price=price_ngn,
             status='pending'
         )
 
@@ -61,7 +106,9 @@ def buy_number(request, service_id):
         return redirect('virtual_numbers:number_detail', pk=purchased.pk)
 
     return render(request, 'virtual_numbers/buy_number.html', {
+        'country': country,
         'service': service,
+        'price_ngn': price_ngn,
         'wallet': wallet,
     })
 
