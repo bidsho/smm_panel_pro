@@ -49,6 +49,7 @@ MIDDLEWARE = [
 ROOT_URLCONF = 'core.urls'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
 FIVESIM_API_KEY = os.getenv('FIVESIM_API_KEY')
+CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost').split(',')
 
 TEMPLATES = [
     {
