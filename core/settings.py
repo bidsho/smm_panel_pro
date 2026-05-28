@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     'accounts',
     'wallets',
     'orders',
+    'virtual_numbers',
 ]
 
 MIDDLEWARE = [
