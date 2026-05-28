@@ -20,8 +20,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 # Converts the string 'True' or 'False' from the env file to a Python Boolean
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
-ALLOWED_HOSTS = ['nairaboost.com', 'www.nairaboost.com', 'yourusername.pythonanywhere.com', '127.0.0.1', 'localhost']
-
+ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
