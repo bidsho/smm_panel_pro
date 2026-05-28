@@ -54,8 +54,8 @@ def number_list(request):
 
 @login_required
 def buy_number(request):
-    country = request.GET.get('country')
-    service = request.GET.get('service')
+    country = request.GET.get('country') or request.POST.get('country')
+    service = request.GET.get('service') or request.POST.get('service')
 
     if not country or not service:
         return redirect('virtual_numbers:number_list')
@@ -63,9 +63,12 @@ def buy_number(request):
     try:
         raw_products = fivesim.get_products(country, service)
         service_data = raw_products.get(service, {})
+        if not service_data:
+            messages.error(request, 'Service not available for this country.')
+            return redirect('virtual_numbers:number_list')
         price_ngn = Decimal(str(fivesim.calculate_price(service_data.get('Cost', 0))))
-    except Exception:
-        messages.error(request, 'Failed to get price.')
+    except Exception as e:
+        messages.error(request, f'Failed to get price: {str(e)}')
         return redirect('virtual_numbers:number_list')
 
     wallet = request.user.wallet
@@ -77,8 +80,8 @@ def buy_number(request):
 
         result = fivesim.buy_number(country, service)
 
-        if 'id' not in result:
-            messages.error(request, f'Failed: {result.get("message", "Unknown error")}')
+        if 'error' in result or 'id' not in result:
+            messages.error(request, f'Failed: {result.get("message", result.get("error", "Unknown error"))}')
             return redirect('virtual_numbers:number_list')
 
         # Deduct wallet
@@ -122,14 +125,17 @@ def number_detail(request, pk):
 
         if action == 'check':
             result = fivesim.check_order(number.provider_order_id)
-            sms_list = result.get('sms', [])
-            if sms_list:
-                number.otp_code = sms_list[0]['code']
-                number.status = 'received'
-                number.save()
-                messages.success(request, f'OTP received: {number.otp_code}')
+            if 'error' in result:
+                messages.error(request, f'Error: {result["error"]}')
             else:
-                messages.info(request, 'No SMS yet. Please wait and try again.')
+                sms_list = result.get('sms', [])
+                if sms_list:
+                    number.otp_code = sms_list[0]['code']
+                    number.status = 'received'
+                    number.save()
+                    messages.success(request, f'OTP received: {number.otp_code}')
+                else:
+                    messages.info(request, 'No SMS yet. Please wait and try again.')
 
         elif action == 'finish':
             fivesim.finish_order(number.provider_order_id)
