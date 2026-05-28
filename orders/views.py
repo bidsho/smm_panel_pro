@@ -5,6 +5,7 @@ from django.db import transaction
 from decimal import Decimal
 from .models import Service, Order
 from wallets.models import Wallet, Transaction
+from .models import SocialAccount, AccountOrder
 
 import requests
 from django.db import transaction
@@ -93,8 +94,7 @@ def order_history(request):
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
     return render(request, 'orders/order_history.html', {'orders': orders})    
 
-from django.shortcuts import get_object_or_400004, render, redirect
-from .models import SocialAccount, AccountOrder
+
 
 @login_required
 def available_accounts(request):
