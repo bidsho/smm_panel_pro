@@ -26,4 +26,5 @@ urlpatterns = [
     path("accounts/", include("accounts.urls")),
     path('orders/', include('orders.urls')),
     path('wallets/', include('wallets.urls')),
+    path('virtual-numbers/', include('virtual_numbers.urls')),
 ]
