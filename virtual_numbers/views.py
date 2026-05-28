@@ -26,12 +26,11 @@ def number_list(request):
     try:
         countries_data = fivesim.get_countries()
     except Exception:
-        messages.error(request, 'Failed to load countries. Please try again.')
+        messages.error(request, 'Failed to load countries.')
 
     if selected_country and selected_service:
         try:
-            raw_products = fivesim.get_products(selected_country, selected_service)
-            service_data = raw_products.get(selected_service, {})
+            service_data = fivesim.get_products(selected_country, selected_service)
             if service_data:
                 products = [{
                     'country': selected_country,
@@ -40,6 +39,8 @@ def number_list(request):
                     'price_ngn': fivesim.calculate_price(service_data.get('Cost', 0)),
                     'count': service_data.get('Count', 0),
                 }]
+            else:
+                messages.info(request, 'No numbers available for this selection.')
         except Exception:
             messages.error(request, 'Failed to load products.')
 
@@ -61,8 +62,7 @@ def buy_number(request):
         return redirect('virtual_numbers:number_list')
 
     try:
-        raw_products = fivesim.get_products(country, service)
-        service_data = raw_products.get(service, {})
+        service_data = fivesim.get_products(country, service)
         if not service_data:
             messages.error(request, 'Service not available for this country.')
             return redirect('virtual_numbers:number_list')

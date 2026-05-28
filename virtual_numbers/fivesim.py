@@ -9,8 +9,8 @@ HEADERS = {
     "Accept": "application/json",
 }
 
-PROFIT_PERCENT = 30  # Your profit percentage
-USD_TO_NGN = 1600    # Exchange rate
+PROFIT_PERCENT = 30
+USD_TO_NGN = 1600
 
 
 def get_balance():
@@ -39,12 +39,14 @@ def get_products(country, service):
         response = requests.get(url, headers=HEADERS)
         if not response.text:
             return {}
-        return response.json()
+        data = response.json()
+        return data.get(service, {})
     except Exception as e:
         return {}
 
 
 def calculate_price(usd_price):
+    """Convert USD to NGN and add 30% profit"""
     ngn_price = float(usd_price) * USD_TO_NGN
     final_price = ngn_price * (1 + PROFIT_PERCENT / 100)
     return round(final_price, 2)
