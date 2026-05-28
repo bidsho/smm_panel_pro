@@ -92,3 +92,55 @@ def order_history(request):
     # Get only the orders belonging to the logged-in user
     orders = Order.objects.filter(user=request.user).order_by('-created_at')
     return render(request, 'orders/order_history.html', {'orders': orders})    
+
+from django.shortcuts import get_object_or_400004, render, redirect
+from .models import SocialAccount, AccountOrder
+
+@login_required
+def available_accounts(request):
+    """Lists all social media accounts currently available for purchase."""
+    accounts = SocialAccount.objects.filter(status='available').order_by('-created_at')
+    return render(request, 'orders/available_accounts.html', {'accounts': accounts})
+
+
+@login_required
+def buy_account(request, account_id):
+    """Handles the secure purchase execution of a social media account."""
+    if request.method == 'POST':
+        # Lock the row immediately so two users can't click buy at the exact same millisecond
+        with transaction.atomic():
+            try:
+                account = SocialAccount.objects.select_for_update().get(id=account_id, status='available')
+            except SocialAccount.DoesNotExist:
+                messages.error(request, "Sorry, this account has already been sold or is no longer available.")
+                return redirect('available_accounts')
+
+            # Fetch the user's wallet with a database lock
+            wallet = request.user.wallet
+            
+            # Check balance
+            if wallet.balance < account.price:
+                messages.error(request, f"Insufficient balance! You need ₦{account.price} but only have ₦{wallet.balance}.")
+                return redirect('available_accounts')
+
+            # Create the AccountOrder. 
+            # Note: Your model's save() method will automatically deduct the wallet balance,
+            # mark the account as 'sold', and link the buyer!
+            AccountOrder.objects.create(
+                user=request.user,
+                account=account,
+                amount_paid=account.price,
+                status='completed'
+            )
+
+            messages.success(request, f"Purchase successful! @{account.username} has been added to your inventory.")
+            return redirect('purchased_accounts') # Redirect to user's purchased inventory
+
+    return redirect('available_accounts')
+
+
+@login_required
+def purchased_accounts(request):
+    """Displays accounts bought explicitly by the logged-in user containing credentials."""
+    orders = AccountOrder.objects.filter(user=request.user, status='completed').select_related('account')
+    return render(request, 'orders/purchased_accounts.html', {'orders': orders})
