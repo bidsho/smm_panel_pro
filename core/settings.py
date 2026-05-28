@@ -48,6 +48,7 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+FIVESIM_API_KEY = os.getenv('FIVESIM_API_KEY')
 
 TEMPLATES = [
     {
