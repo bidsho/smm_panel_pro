@@ -64,6 +64,7 @@ def buy_number(request):
         service = request.GET.get('service')
 
     if not country or not service:
+        messages.error(request, 'DEBUG: country or service missing')
         return redirect('virtual_numbers:number_list')
 
     try:
@@ -80,10 +81,14 @@ def buy_number(request):
 
     if request.method == 'POST':
         if wallet.balance < price_ngn:
-            messages.error(request, 'Insufficient wallet balance.')
+            messages.error(request, f'DEBUG: Insufficient balance. Balance={wallet.balance} Price={price_ngn}')
             return redirect('virtual_numbers:number_list')
 
         result = fivesim.buy_number(country, service)
+
+        # DEBUG - show exact result
+        messages.error(request, f'DEBUG 5sim result: {result}')
+        return redirect('virtual_numbers:number_list')
 
         if 'error' in result or 'id' not in result:
             messages.error(request, f'Failed: {result.get("message", result.get("error", "Unknown error"))}')
