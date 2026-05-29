@@ -56,8 +56,12 @@ def number_list(request):
 
 @login_required
 def buy_number(request):
-    country = request.GET.get('country') or request.POST.get('country')
-    service = request.GET.get('service') or request.POST.get('service')
+    if request.method == 'POST':
+        country = request.POST.get('country')
+        service = request.POST.get('service')
+    else:
+        country = request.GET.get('country')
+        service = request.GET.get('service')
 
     if not country or not service:
         return redirect('virtual_numbers:number_list')
