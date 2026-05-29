@@ -51,6 +51,25 @@ def get_products(country, service):
         return {}
 
 
+def get_all_products(service):
+    try:
+        url = f"{BASE_URL}/guest/products/any/any"
+        response = requests.get(
+            url,
+            headers={"Accept": "application/json"}
+        )
+        if not response.text:
+            return {}
+        data = response.json()
+        result = {}
+        for country, services in data.items():
+            if service in services:
+                result[country] = services[service]
+        return result
+    except Exception as e:
+        return {}
+
+
 def calculate_price(usd_price):
     """Convert USD to NGN and add 30% profit"""
     ngn_price = float(usd_price) * USD_TO_NGN
@@ -66,7 +85,6 @@ def buy_number(country, service):
         if not response.text:
             return {'error': 'Empty response from 5sim API'}
 
-        # Handle plain text error responses from 5sim
         plain_text_errors = [
             'no free phones',
             'not enough user balance',

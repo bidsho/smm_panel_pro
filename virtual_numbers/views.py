@@ -19,7 +19,6 @@ SERVICES = [
 
 @login_required
 def number_list(request):
-    selected_country = request.GET.get('country', '')
     selected_service = request.GET.get('service', 'whatsapp')
     products = []
     countries_data = {}
@@ -29,19 +28,21 @@ def number_list(request):
     except Exception:
         messages.error(request, 'Failed to load countries.')
 
-    if selected_country and selected_service:
+    if selected_service:
         try:
-            service_data = fivesim.get_products(selected_country, selected_service)
-            if service_data:
-                products = [{
-                    'country': selected_country,
+            all_products = fivesim.get_all_products(selected_service)
+            products = [
+                {
+                    'country': country,
                     'service': selected_service,
-                    'price_usd': service_data.get('Price', 0),
-                    'price_ngn': fivesim.calculate_price(service_data.get('Price', 0)),
-                    'count': service_data.get('Qty', 0),
-                }]
-            else:
-                messages.info(request, 'No numbers available for this selection.')
+                    'price_usd': data.get('Price', 0),
+                    'price_ngn': fivesim.calculate_price(data.get('Price', 0)),
+                    'count': data.get('Qty', 0),
+                }
+                for country, data in all_products.items()
+                if data.get('Qty', 0) > 0
+            ]
+            products = sorted(products, key=lambda x: x['count'], reverse=True)
         except Exception:
             messages.error(request, 'Failed to load products.')
 
@@ -49,7 +50,6 @@ def number_list(request):
         'countries': countries_data,
         'services': SERVICES,
         'products': products,
-        'selected_country': selected_country,
         'selected_service': selected_service,
     })
 
@@ -87,7 +87,7 @@ def buy_number(request):
         result = fivesim.buy_number(country, service)
 
         if 'error' in result or 'id' not in result:
-            messages.error(request, f'5sim error: {result}')
+            messages.error(request, f'5sim error: {result.get("error", "Unknown error")}')
             return redirect('virtual_numbers:number_list')
 
         # Deduct wallet
