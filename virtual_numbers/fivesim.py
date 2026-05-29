@@ -25,7 +25,10 @@ def get_balance():
 
 def get_countries():
     try:
-        response = requests.get(f"{BASE_URL}/guest/countries", headers=HEADERS)
+        response = requests.get(
+            f"{BASE_URL}/guest/countries",
+            headers={"Accept": "application/json"}
+        )
         if not response.text:
             return {}
         return response.json()
@@ -36,10 +39,14 @@ def get_countries():
 def get_products(country, service):
     try:
         url = f"{BASE_URL}/guest/products/{country}/any"
-        response = requests.get(url, headers=HEADERS)
+        response = requests.get(
+            url,
+            headers={"Accept": "application/json"}
+        )
         if not response.text:
             return {}
         data = response.json()
+        # API returns {service_name: {Cost, Count, Rate}}
         return data.get(service, {})
     except Exception as e:
         return {}

@@ -4,6 +4,23 @@ from django.contrib import messages
 from .models import PurchasedNumber, Country
 from . import fivesim
 from decimal import Decimal
+from django.http import JsonResponse
+
+@login_required  
+def debug_api(request):
+    country = request.GET.get('country', 'nigeria')
+    service = request.GET.get('service', 'whatsapp')
+    
+    countries = fivesim.get_countries()
+    raw_products = fivesim.get_products(country, service)
+    
+    return JsonResponse({
+        'countries_count': len(countries),
+        'countries_sample': dict(list(countries.items())[:2]) if countries else {},
+        'products': raw_products,
+        'country': country,
+        'service': service,
+    })
 
 
 SERVICES = [
