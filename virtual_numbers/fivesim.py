@@ -60,11 +60,22 @@ def calculate_price(usd_price):
 
 def buy_number(country, service):
     try:
+        # Try with 'any' operator first
         url = f"{USER_URL}/buy/activation/{country}/any/{service}"
         response = requests.get(url, headers=HEADERS)
-        if not response.text:
-            return {'error': 'Empty response from 5sim API'}
-        return response.json()
+        print(f"any - Status: {response.status_code}, Response: {response.text[:200]}")
+        if response.status_code == 200 and response.text:
+            return response.json()
+
+        # Try with virtual operators
+        for operator in ['virtual21', 'virtual27', 'virtual4']:
+            url = f"{USER_URL}/buy/activation/{country}/{operator}/{service}"
+            response = requests.get(url, headers=HEADERS)
+            print(f"{operator} - Status: {response.status_code}, Response: {response.text[:200]}")
+            if response.status_code == 200 and response.text:
+                return response.json()
+
+        return {'error': f'All operators failed. Last status: {response.status_code}'}
     except Exception as e:
         return {'error': str(e)}
 
