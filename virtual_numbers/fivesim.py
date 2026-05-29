@@ -60,22 +60,27 @@ def calculate_price(usd_price):
 
 def buy_number(country, service):
     try:
-        # Try with 'any' operator first
         url = f"{USER_URL}/buy/activation/{country}/any/{service}"
         response = requests.get(url, headers=HEADERS)
-        print(f"any - Status: {response.status_code}, Response: {response.text[:200]}")
-        if response.status_code == 200 and response.text:
-            return response.json()
 
-        # Try with virtual operators
-        for operator in ['virtual21', 'virtual27', 'virtual4']:
-            url = f"{USER_URL}/buy/activation/{country}/{operator}/{service}"
-            response = requests.get(url, headers=HEADERS)
-            print(f"{operator} - Status: {response.status_code}, Response: {response.text[:200]}")
-            if response.status_code == 200 and response.text:
-                return response.json()
+        if not response.text:
+            return {'error': 'Empty response from 5sim API'}
 
-        return {'error': f'All operators failed. Last status: {response.status_code}'}
+        # Handle plain text error responses from 5sim
+        plain_text_errors = [
+            'no free phones',
+            'not enough user balance',
+            'bad service',
+            'bad country',
+            'bad operator',
+        ]
+        if response.text.strip() in plain_text_errors:
+            return {'error': response.text.strip()}
+
+        if not response.text.strip().startswith('{'):
+            return {'error': response.text.strip()}
+
+        return response.json()
     except Exception as e:
         return {'error': str(e)}
 
@@ -85,6 +90,8 @@ def check_order(order_id):
         response = requests.get(f"{USER_URL}/check/{order_id}", headers=HEADERS)
         if not response.text:
             return {'error': 'Empty response'}
+        if not response.text.strip().startswith('{'):
+            return {'error': response.text.strip()}
         return response.json()
     except Exception as e:
         return {'error': str(e)}
@@ -95,6 +102,8 @@ def finish_order(order_id):
         response = requests.get(f"{USER_URL}/finish/{order_id}", headers=HEADERS)
         if not response.text:
             return {'error': 'Empty response'}
+        if not response.text.strip().startswith('{'):
+            return {'error': response.text.strip()}
         return response.json()
     except Exception as e:
         return {'error': str(e)}
@@ -105,6 +114,8 @@ def cancel_order(order_id):
         response = requests.get(f"{USER_URL}/cancel/{order_id}", headers=HEADERS)
         if not response.text:
             return {'error': 'Empty response'}
+        if not response.text.strip().startswith('{'):
+            return {'error': response.text.strip()}
         return response.json()
     except Exception as e:
         return {'error': str(e)}
