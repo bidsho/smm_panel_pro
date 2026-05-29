@@ -134,6 +134,13 @@
             <a class="nav-link active" href="{% url 'dashboard' %}"><i class="fas fa-th-large me-3"></i> Dashboard</a>
             <a class="nav-link" href="{% url 'new_order' %}"><i class="fas fa-shopping-cart me-3"></i> New Order</a>
             <a class="nav-link" href="{% url 'order_history' %}"><i class="fas fa-list-ul me-3"></i> Order Logs</a>
+             <a class="nav-link" href="{% url 'available_accounts' %}">
+            <i class="fas fa-users me-3"></i> Social Accounts
+
+            </a>
+            <a class="nav-link" href="{% url 'virtual_numbers:number_list' %}">
+    <i class="fas fa-sim-card me-3"></i> Virtual Numbers
+</a>
             <a class="nav-link" href="{% url 'add_funds' %}"><i class="fas fa-wallet me-3"></i> Add Funds</a>
             <a class="nav-link text-danger" href="{% url 'logout' %}"><i class="fas fa-power-off me-3"></i> Logout</a>
         </nav>
