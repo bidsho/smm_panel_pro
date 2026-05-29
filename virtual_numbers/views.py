@@ -1,26 +1,10 @@
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
+from django.http import JsonResponse
 from .models import PurchasedNumber, Country
 from . import fivesim
 from decimal import Decimal
-from django.http import JsonResponse
-
-@login_required  
-def debug_api(request):
-    country = request.GET.get('country', 'nigeria')
-    service = request.GET.get('service', 'whatsapp')
-    
-    countries = fivesim.get_countries()
-    raw_products = fivesim.get_products(country, service)
-    
-    return JsonResponse({
-        'countries_count': len(countries),
-        'countries_sample': dict(list(countries.items())[:2]) if countries else {},
-        'products': raw_products,
-        'country': country,
-        'service': service,
-    })
 
 
 SERVICES = [
@@ -52,9 +36,9 @@ def number_list(request):
                 products = [{
                     'country': selected_country,
                     'service': selected_service,
-                    'price_usd': service_data.get('Cost', 0),
-                    'price_ngn': fivesim.calculate_price(service_data.get('Cost', 0)),
-                    'count': service_data.get('Count', 0),
+                    'price_usd': service_data.get('Price', 0),
+                    'price_ngn': fivesim.calculate_price(service_data.get('Price', 0)),
+                    'count': service_data.get('Qty', 0),
                 }]
             else:
                 messages.info(request, 'No numbers available for this selection.')
@@ -83,7 +67,7 @@ def buy_number(request):
         if not service_data:
             messages.error(request, 'Service not available for this country.')
             return redirect('virtual_numbers:number_list')
-        price_ngn = Decimal(str(fivesim.calculate_price(service_data.get('Cost', 0))))
+        price_ngn = Decimal(str(fivesim.calculate_price(service_data.get('Price', 0))))
     except Exception as e:
         messages.error(request, f'Failed to get price: {str(e)}')
         return redirect('virtual_numbers:number_list')
@@ -178,3 +162,18 @@ def number_detail(request, pk):
 def my_numbers(request):
     numbers = PurchasedNumber.objects.filter(user=request.user)
     return render(request, 'virtual_numbers/my_numbers.html', {'numbers': numbers})
+
+
+@login_required
+def debug_api(request):
+    country = request.GET.get('country', 'nigeria')
+    service = request.GET.get('service', 'whatsapp')
+    countries = fivesim.get_countries()
+    raw_products = fivesim.get_products(country, service)
+    return JsonResponse({
+        'countries_count': len(countries),
+        'countries_sample': dict(list(countries.items())[:2]) if countries else {},
+        'products': raw_products,
+        'country': country,
+        'service': service,
+    })

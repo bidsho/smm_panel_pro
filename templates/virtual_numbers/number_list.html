@@ -1,4 +1,4 @@
-{% extends 'layouts/base.html' %}
+{% extends 'layout/base.html' %}
 {% block content %}
 <div class="row mb-4">
     <div class="col-12">
@@ -11,7 +11,6 @@
     </div>
 </div>
 
-<!-- Filter Form -->
 <div class="card border-0 shadow-sm mb-4">
     <div class="card-body">
         <form method="get" class="row g-3">
@@ -22,7 +21,7 @@
                     {% for code, info in countries.items %}
                     <option value="{{ code }}"
                         {% if selected_country == code %}selected{% endif %}>
-                        {{ info.text|default:code|title }}
+                        {{ info.text_en|default:code|title }}
                     </option>
                     {% endfor %}
                 </select>
@@ -47,7 +46,6 @@
     </div>
 </div>
 
-<!-- Results -->
 <div class="row">
     {% for product in products %}
     <div class="col-md-4 mb-4">

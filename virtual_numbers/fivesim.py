@@ -46,7 +46,6 @@ def get_products(country, service):
         if not response.text:
             return {}
         data = response.json()
-        # API returns {service_name: {Cost, Count, Rate}}
         return data.get(service, {})
     except Exception as e:
         return {}
