@@ -64,7 +64,7 @@ def buy_number(request):
         service = request.GET.get('service')
 
     if not country or not service:
-        messages.error(request, 'DEBUG: country or service missing')
+        messages.error(request, 'Country or service missing.')
         return redirect('virtual_numbers:number_list')
 
     try:
@@ -81,17 +81,13 @@ def buy_number(request):
 
     if request.method == 'POST':
         if wallet.balance < price_ngn:
-            messages.error(request, f'DEBUG: Insufficient balance. Balance={wallet.balance} Price={price_ngn}')
+            messages.error(request, f'Insufficient balance. Your balance is ₦{wallet.balance} but price is ₦{price_ngn}')
             return redirect('virtual_numbers:number_list')
 
         result = fivesim.buy_number(country, service)
 
-        # DEBUG - show exact result
-        messages.error(request, f'DEBUG 5sim result: {result}')
-        return redirect('virtual_numbers:number_list')
-
         if 'error' in result or 'id' not in result:
-            messages.error(request, f'Failed: {result.get("message", result.get("error", "Unknown error"))}')
+            messages.error(request, f'5sim error: {result}')
             return redirect('virtual_numbers:number_list')
 
         # Deduct wallet
@@ -175,13 +171,14 @@ def my_numbers(request):
 
 @login_required
 def debug_api(request):
-    country = request.GET.get('country', 'nigeria')
+    country = request.GET.get('country', 'austria')
     service = request.GET.get('service', 'whatsapp')
     countries = fivesim.get_countries()
     raw_products = fivesim.get_products(country, service)
+    balance = fivesim.get_balance()
     return JsonResponse({
+        'balance': balance,
         'countries_count': len(countries),
-        'countries_sample': dict(list(countries.items())[:2]) if countries else {},
         'products': raw_products,
         'country': country,
         'service': service,
