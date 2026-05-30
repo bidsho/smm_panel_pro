@@ -58,7 +58,7 @@ def signup_view(request):
         user = User.objects.create_user(username=u, email=e, password=p)
         login(request, user)
         messages.success(request, f"Account created for {user.username}!")
-        return redirect('index')
+        return redirect('dashboard')
     
     return render(request, 'accounts/signup.html')
 
