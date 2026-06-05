@@ -98,25 +98,30 @@ class ServiceAdmin(admin.ModelAdmin):
 
         created, updated = 0, 0
 
+        # 💡 Helper function moved to the top of the processing block to protect all logic down-stream
+        def safe_int(val):
+            try:
+                return int(float(val))
+            except (ValueError, TypeError):
+                return 0
+
         for svc in services:
             if not isinstance(svc, dict) or 'service' not in svc:
                 continue  
                 
-            # 💡 Defensive conversion parser to prevent 500 crashes on non-integer data fields
-            def safe_int(val):
-                try:
-                    return int(float(val))
-                except (ValueError, TypeError):
-                    return 0
+            # 💡 FIX: Cast the lookup ID to an integer immediately BEFORE running the database query!
+            target_id = safe_int(svc.get('service'))
+            if target_id == 0:
+                continue
 
-            existing_service = Service.objects.filter(provider_service_id=svc['service']).first()
+            existing_service = Service.objects.filter(provider_service_id=target_id).first()
             
             defaults_dict = {
                 'name': svc.get('name', ''),
                 'category': svc.get('category', ''),
                 'cost_per_1k_usd': svc.get('rate', 0.00),
-                'min_qty': safe_int(svc.get('min', 0)),  # 👈 Fixed crash point
-                'max_qty': safe_int(svc.get('max', 0)),  # 👈 Fixed crash point
+                'min_qty': safe_int(svc.get('min', 0)),  
+                'max_qty': safe_int(svc.get('max', 0)),  
             }
             
             # If it's a completely brand new service, keep it hidden by default
@@ -124,7 +129,7 @@ class ServiceAdmin(admin.ModelAdmin):
                 defaults_dict['is_active'] = False
 
             obj, was_created = Service.objects.update_or_create(
-                provider_service_id=svc['service'],
+                provider_service_id=target_id,
                 defaults=defaults_dict
             )
             
