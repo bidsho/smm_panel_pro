@@ -12,7 +12,7 @@
                     
                     <div class="mb-3">
                         <label class="form-label fw-bold">🔍 Search & Filter Services</label>
-                        <input type="text" id="serviceSearch" class="form-control p-3 mb-2" placeholder="Type here to search (e.g., Instagram, Followers, Likes)..." style="border-radius: 10px; background-color: #fafafa;">
+                        <input type="text" id="serviceSearch" class="form-control p-3 mb-2" placeholder="Type here to search (e.g., Instagram, Facebook, TikTok, Followers)..." style="border-radius: 10px; background-color: #fafafa;">
                     </div>
 
                     <div class="mb-3">
@@ -65,10 +65,6 @@
     const totalCharge = document.getElementById('totalCharge');
     const searchFeedback = document.getElementById('searchFeedback');
 
-    // Store all raw individual options and groups once during load to manage states easily
-    const allOptions = Array.from(serviceSelect.querySelectorAll('option')).filter(opt => opt.value !== "");
-    const allOptGroups = Array.from(serviceSelect.querySelectorAll('optgroup'));
-
     // --- 🧮 Math Logic for Price Calculation ---
     function calculateCost() {
         const selectedOption = serviceSelect.options[serviceSelect.selectedIndex];
@@ -81,52 +77,57 @@
         totalCharge.innerText = cost.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
     }
 
-    // --- 🔍 Fast Search Filtering Logic ---
+    // --- 🔍 Universal Search Filtering Logic ---
     function filterServices() {
-        const searchTerm = serviceSearch.value.toLowerCase().strip ? serviceSearch.value.toLowerCase().trim() : serviceSearch.value.toLowerCase();
-        let visibleCount = 0;
+        const searchTerm = serviceSearch.value.toLowerCase().trim();
+        const allOptGroups = serviceSelect.querySelectorAll('optgroup');
+        let totalVisible = 0;
 
-        // If search bar is cleared, reset to standard display
+        // If search bar is completely cleared, instantly restore everything
         if (searchTerm === "") {
-            allOptGroups.forEach(group => group.style.display = "");
-            allOptions.forEach(opt => opt.style.display = "");
+            allOptGroups.forEach(group => {
+                group.style.display = "";
+                Array.from(group.options).forEach(opt => opt.removeAttribute('disabled'));
+            });
             searchFeedback.classList.add('d-none');
             return;
         }
 
-        // Evaluate every option row based on user input
-        allOptions.forEach(opt => {
-            const parentGroup = opt.parentElement;
-            const textMatch = opt.text.toLowerCase().includes(searchTerm);
-            const categoryMatch = parentGroup.getAttribute('data-category').includes(searchTerm);
-
-            if (textMatch || categoryMatch) {
-                opt.style.display = "";
-                visibleCount++;
-            } else {
-                opt.style.display = "none";
-                // If the user happens to search past the currently active selection, reset value gracefully
-                if (serviceSelect.value === opt.value) {
-                    serviceSelect.value = "";
-                    totalCharge.innerText = "0.00";
-                }
-            }
-        });
-
-        // Hide empty categories completely so search output stays super clean
+        // Loop through categories (optgroups)
         allOptGroups.forEach(group => {
-            const children = Array.from(group.querySelectorAll('option'));
-            const matchesInsideGroup = children.some(opt => opt.style.display === "");
-            
-            if (matchesInsideGroup) {
+            const categoryName = group.getAttribute('data-category') || "";
+            const options = Array.from(group.options);
+            let matchInGroup = false;
+
+            options.forEach(opt => {
+                const optionText = opt.text.toLowerCase();
+                
+                // Check if either the group name OR individual service title contains the search keyword
+                if (optionText.includes(searchTerm) || categoryName.includes(searchTerm)) {
+                    opt.removeAttribute('disabled'); // Show it
+                    matchInGroup = true;
+                    totalVisible++;
+                } else {
+                    opt.setAttribute('disabled', 'disabled'); // Native trick to hide option inside optgroups shards
+                    
+                    // Clear out selection if it gets filtered away
+                    if (serviceSelect.value === opt.value) {
+                        serviceSelect.value = "";
+                        totalCharge.innerText = "0.00";
+                    }
+                }
+            });
+
+            // If at least one option matches inside this category, display the whole group; otherwise hide it
+            if (matchInGroup) {
                 group.style.display = "";
             } else {
                 group.style.display = "none";
             }
         });
 
-        // Show feedback warning if absolutely nothing aligns with search criteria
-        if (visibleCount === 0) {
+        // Toggle error feedback if everything is hidden
+        if (totalVisible === 0) {
             searchFeedback.classList.remove('d-none');
         } else {
             searchFeedback.classList.add('d-none');
