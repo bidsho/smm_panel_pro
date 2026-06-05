@@ -43,7 +43,21 @@ class ServiceAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'category')
     search_fields = ('name', 'category', 'provider_service_id')
     
+    # 💡 Added bulk action dropdown options so you can activate/deactivate hundreds of items at once
+    actions = ['bulk_activate_services', 'bulk_deactivate_services']
     change_list_template = "admin/service_changelist.html"
+
+    def bulk_activate_services(self, request, queryset):
+        """Action to instantly set selected services to Active."""
+        updated_count = queryset.update(is_active=True)
+        self.message_user(request, f"🟢 Successfully activated {updated_count} services for your users!", level=messages.SUCCESS)
+    bulk_activate_services.short_description = "🟢 Mark selected services as ACTIVE"
+
+    def bulk_deactivate_services(self, request, queryset):
+        """Action to instantly set selected services to Inactive."""
+        updated_count = queryset.update(is_active=False)
+        self.message_user(request, f"🔴 Successfully hid {updated_count} services from the user end.", level=messages.SUCCESS)
+    bulk_deactivate_services.short_description = "🔴 Mark selected services as INACTIVE"
 
     def get_urls(self):
         from django.urls import path
@@ -89,15 +103,16 @@ class ServiceAdmin(admin.ModelAdmin):
             if not isinstance(svc, dict) or 'service' not in svc:
                 continue  
                 
-            # 💡 Map 'min' and 'max' directly from the API response to satisfy database requirements
+            # 💡 'is_active': False is set explicitly during creation so everything defaults to OFF
             obj, was_created = Service.objects.update_or_create(
                 provider_service_id=svc['service'],
                 defaults={
                     'name': svc.get('name', ''),
                     'category': svc.get('category', ''),
                     'cost_per_1k_usd': svc.get('rate', 0.00),
-                    'min_qty': int(svc.get('min', 0)),  # 👈 Added this fix
-                    'max_qty': int(svc.get('max', 0)),  # 👈 Added this fix
+                    'min_qty': int(svc.get('min', 0)),  
+                    'max_qty': int(svc.get('max', 0)),  
+                    'is_active': False if was_created else getattr(Service.objects.filter(provider_service_id=svc['service']).first(), 'is_active', False)
                 }
             )
             if was_created:
@@ -107,7 +122,7 @@ class ServiceAdmin(admin.ModelAdmin):
 
         self.message_user(
             request, 
-            f"Sync complete! Loaded {created} total services from JAP. Go ahead and activate what you need!", 
+            f"Sync complete! Imported {created} new items as inactive. Feel free to turn on the ones you want!", 
             level=messages.SUCCESS
         )
         return redirect("..")
