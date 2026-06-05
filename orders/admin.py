@@ -102,19 +102,24 @@ class ServiceAdmin(admin.ModelAdmin):
             if not isinstance(svc, dict) or 'service' not in svc:
                 continue  
                 
-            # 💡 FIX: We handle 'is_active' dynamically. 
-            # If creating a new service, default it to False.
-            # If updating an existing service, we omit it completely from defaults so your changes don't get overwritten!
+            # 💡 Defensive conversion parser to prevent 500 crashes on non-integer data fields
+            def safe_int(val):
+                try:
+                    return int(float(val))
+                except (ValueError, TypeError):
+                    return 0
+
             existing_service = Service.objects.filter(provider_service_id=svc['service']).first()
             
             defaults_dict = {
                 'name': svc.get('name', ''),
                 'category': svc.get('category', ''),
                 'cost_per_1k_usd': svc.get('rate', 0.00),
-                'min_qty': int(svc.get('min', 0)),  
-                'max_qty': int(svc.get('max', 0)),  
+                'min_qty': safe_int(svc.get('min', 0)),  # 👈 Fixed crash point
+                'max_qty': safe_int(svc.get('max', 0)),  # 👈 Fixed crash point
             }
             
+            # If it's a completely brand new service, keep it hidden by default
             if not existing_service:
                 defaults_dict['is_active'] = False
 
@@ -139,6 +144,8 @@ class ServiceAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
         extra_context.update(get_dashboard_metrics())
         return super().changelist_view(request, extra_context=extra_context)
+
+
 @admin.register(SocialAccount)
 class SocialAccountAdmin(admin.ModelAdmin):
     list_display = ('id', 'platform', 'username', 'price', 'status', 'created_at')
