@@ -1,8 +1,9 @@
-import requests  # 💡 Added missing import required for the JAP API call
+import requests  
 from django.contrib import admin, messages
 from django.conf import settings
 from django.db.models import Sum
 from django.contrib.auth import get_user_model
+from django.shortcuts import redirect
 from .models import Service, Order, SocialAccount, AccountOrder
 from .utils import get_jap_balance
 
@@ -27,7 +28,7 @@ class OrderAdmin(admin.ModelAdmin):
     list_display = ('id', 'user', 'service', 'quantity', 'total_price', 'status', 'created_at')
     list_filter = ('status', 'created_at')
     search_fields = ('user__username', 'id', 'api_order_id')
-    raw_id_fields = ('user', 'service')  # Prevents performance bottleneck over thousands of rows
+    raw_id_fields = ('user', 'service')
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
@@ -41,10 +42,21 @@ class ServiceAdmin(admin.ModelAdmin):
     list_editable = ('is_active',)
     list_filter = ('is_active', 'category')
     search_fields = ('name', 'category', 'provider_service_id')
-    actions = ['sync_from_jap_api']
+    
+    # 💡 Forces Django to use our custom template where the top sync button lives
+    change_list_template = "admin/service_changelist.html"
 
-    def sync_from_jap_api(self, request, queryset):
-        # Fetch key securely from settings (hydrated by .env)
+    def get_urls(self):
+        """Creates a custom URL route to handle syncing without checking rows."""
+        from django.urls import path
+        urls = super().get_urls()
+        custom_urls = [
+            path('sync-all/', self.admin_site.admin_view(self.sync_all_from_jap_api), name='service_sync_all'),
+        ]
+        return custom_urls + urls
+
+    def sync_all_from_jap_api(self, request):
+        """Fetches every package from JAP and stores them as inactive backgrounds."""
         api_key = getattr(settings, 'JAP_API_KEY', None)
         
         if not api_key:
@@ -53,9 +65,8 @@ class ServiceAdmin(admin.ModelAdmin):
                 "Sync failed: JAP_API_KEY is missing from your .env file or settings.", 
                 level=messages.ERROR
             )
-            return
+            return redirect("..")
 
-        # Perform the remote request safely
         try:
             response = requests.post(
                 'https://justanotherpanel.com/api/v2', 
@@ -66,22 +77,20 @@ class ServiceAdmin(admin.ModelAdmin):
             services = response.json()
         except requests.exceptions.RequestException as e:
             self.message_user(request, f"Network or API Error: {e}", level=messages.ERROR)
-            return
+            return redirect("..")
         except ValueError:
             self.message_user(request, "Failed to decode JSON data from provider.", level=messages.ERROR)
-            return
+            return redirect("..")
 
-        # Check if API returned an explicit error object (e.g., {"error": "Bad API Key"})
         if isinstance(services, dict) and 'error' in services:
             self.message_user(request, f"API Error Code: {services['error']}", level=messages.ERROR)
-            return
+            return redirect("..")
 
         created, updated = 0, 0
 
-        # Run loop to update local items or insert new ones
         for svc in services:
             if not isinstance(svc, dict) or 'service' not in svc:
-                continue  # Skip unexpected lines safely
+                continue  
                 
             obj, was_created = Service.objects.update_or_create(
                 provider_service_id=svc['service'],
@@ -89,7 +98,6 @@ class ServiceAdmin(admin.ModelAdmin):
                     'name': svc.get('name', ''),
                     'category': svc.get('category', ''),
                     'cost_per_1k_usd': svc.get('rate', 0.00),
-                    # Note: 'is_active' is left out so syncing does not reset local updates
                 }
             )
             if was_created:
@@ -99,11 +107,10 @@ class ServiceAdmin(admin.ModelAdmin):
 
         self.message_user(
             request, 
-            f"Sync complete! {created} new services loaded, {updated} updated.", 
+            f"Sync complete! Loaded {created} total services from JAP. Go ahead and activate what you need!", 
             level=messages.SUCCESS
         )
-
-    sync_from_jap_api.short_description = "🔄 Sync all available services from JAP API"
+        return redirect("..")
 
     def changelist_view(self, request, extra_context=None):
         extra_context = extra_context or {}
