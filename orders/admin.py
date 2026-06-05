@@ -43,7 +43,6 @@ class ServiceAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'category')
     search_fields = ('name', 'category', 'provider_service_id')
     
-    # 💡 Added bulk action dropdown options so you can activate/deactivate hundreds of items at once
     actions = ['bulk_activate_services', 'bulk_deactivate_services']
     change_list_template = "admin/service_changelist.html"
 
@@ -103,18 +102,27 @@ class ServiceAdmin(admin.ModelAdmin):
             if not isinstance(svc, dict) or 'service' not in svc:
                 continue  
                 
-            # 💡 'is_active': False is set explicitly during creation so everything defaults to OFF
+            # 💡 FIX: We handle 'is_active' dynamically. 
+            # If creating a new service, default it to False.
+            # If updating an existing service, we omit it completely from defaults so your changes don't get overwritten!
+            existing_service = Service.objects.filter(provider_service_id=svc['service']).first()
+            
+            defaults_dict = {
+                'name': svc.get('name', ''),
+                'category': svc.get('category', ''),
+                'cost_per_1k_usd': svc.get('rate', 0.00),
+                'min_qty': int(svc.get('min', 0)),  
+                'max_qty': int(svc.get('max', 0)),  
+            }
+            
+            if not existing_service:
+                defaults_dict['is_active'] = False
+
             obj, was_created = Service.objects.update_or_create(
                 provider_service_id=svc['service'],
-                defaults={
-                    'name': svc.get('name', ''),
-                    'category': svc.get('category', ''),
-                    'cost_per_1k_usd': svc.get('rate', 0.00),
-                    'min_qty': int(svc.get('min', 0)),  
-                    'max_qty': int(svc.get('max', 0)),  
-                    'is_active': False if was_created else getattr(Service.objects.filter(provider_service_id=svc['service']).first(), 'is_active', False)
-                }
+                defaults=defaults_dict
             )
+            
             if was_created:
                 created += 1
             else:
@@ -122,7 +130,7 @@ class ServiceAdmin(admin.ModelAdmin):
 
         self.message_user(
             request, 
-            f"Sync complete! Imported {created} new items as inactive. Feel free to turn on the ones you want!", 
+            f"Sync complete! Processed all social networks. New services added: {created}. Existing services updated: {updated}.", 
             level=messages.SUCCESS
         )
         return redirect("..")
