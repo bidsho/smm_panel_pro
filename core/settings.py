@@ -21,6 +21,7 @@ SECRET_KEY = os.getenv('SECRET_KEY')
 DEBUG = os.getenv('DEBUG', 'False') == 'True'
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS', 'localhost,127.0.0.1').split(',')
+
 # Application definition
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -48,7 +49,13 @@ MIDDLEWARE = [
 
 ROOT_URLCONF = 'core.urls'
 STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# --- API Keys & External Gateways Configuration ---
 FIVESIM_API_KEY = os.getenv('FIVESIM_API_KEY')
+PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY')
+PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY')
+JAP_API_KEY = os.getenv('JAP_API_KEY')  # 👈 Added this line to fetch your JAP Key
+
 CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS', 'http://localhost').split(',')
 
 TEMPLATES = [
@@ -117,8 +124,4 @@ DEFAULT_FROM_EMAIL = "NairaBoost <no-reply@nairaboost.com>"
 ADMIN_EMAIL = "admin@nairaboost.com"
 
 # Branding
-SITE_NAME = "NairaBoost"
-
-# Payment Gateway Config
-PAYSTACK_PUBLIC_KEY = os.getenv('PAYSTACK_PUBLIC_KEY')
-PAYSTACK_SECRET_KEY = os.getenv('PAYSTACK_SECRET_KEY')
+SITE_NAME = "BIDSSM"
