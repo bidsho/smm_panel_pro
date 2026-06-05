@@ -43,11 +43,9 @@ class ServiceAdmin(admin.ModelAdmin):
     list_filter = ('is_active', 'category')
     search_fields = ('name', 'category', 'provider_service_id')
     
-    # 💡 Forces Django to use our custom template where the top sync button lives
     change_list_template = "admin/service_changelist.html"
 
     def get_urls(self):
-        """Creates a custom URL route to handle syncing without checking rows."""
         from django.urls import path
         urls = super().get_urls()
         custom_urls = [
@@ -56,7 +54,6 @@ class ServiceAdmin(admin.ModelAdmin):
         return custom_urls + urls
 
     def sync_all_from_jap_api(self, request):
-        """Fetches every package from JAP and stores them as inactive backgrounds."""
         api_key = getattr(settings, 'JAP_API_KEY', None)
         
         if not api_key:
@@ -92,12 +89,15 @@ class ServiceAdmin(admin.ModelAdmin):
             if not isinstance(svc, dict) or 'service' not in svc:
                 continue  
                 
+            # 💡 Map 'min' and 'max' directly from the API response to satisfy database requirements
             obj, was_created = Service.objects.update_or_create(
                 provider_service_id=svc['service'],
                 defaults={
                     'name': svc.get('name', ''),
                     'category': svc.get('category', ''),
                     'cost_per_1k_usd': svc.get('rate', 0.00),
+                    'min_qty': int(svc.get('min', 0)),  # 👈 Added this fix
+                    'max_qty': int(svc.get('max', 0)),  # 👈 Added this fix
                 }
             )
             if was_created:
@@ -116,8 +116,6 @@ class ServiceAdmin(admin.ModelAdmin):
         extra_context = extra_context or {}
         extra_context.update(get_dashboard_metrics())
         return super().changelist_view(request, extra_context=extra_context)
-
-
 @admin.register(SocialAccount)
 class SocialAccountAdmin(admin.ModelAdmin):
     list_display = ('id', 'platform', 'username', 'price', 'status', 'created_at')
