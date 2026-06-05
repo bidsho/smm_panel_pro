@@ -3,12 +3,10 @@ from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.db import transaction
 from decimal import Decimal
-from .models import Service, Order
+from .models import Service, Order, SocialAccount, AccountOrder
 from wallets.models import Wallet, Transaction
-from .models import SocialAccount, AccountOrder
 
 import requests
-from django.db import transaction
 from wallets.models import Wallet, Transaction as WalletTransaction
 
 def place_jap_order(order):
@@ -39,7 +37,9 @@ def place_jap_order(order):
 @login_required
 @transaction.atomic # Move atomic to the top for safety
 def new_order(request):
-    services = Service.objects.filter(is_active=True)
+    # 💡 FIX: Force order sorting structure by category, then by name. 
+    # This ensures Django's {% regroup %} block renders all social media networks properly.
+    services = Service.objects.filter(is_active=True).order_by('category', 'name')
     
     if request.method == 'POST':
         service_id = request.POST.get('service')
@@ -95,7 +95,6 @@ def order_history(request):
     return render(request, 'orders/order_history.html', {'orders': orders})    
 
 
-
 @login_required
 def available_accounts(request):
     """Lists all social media accounts currently available for purchase."""
@@ -124,8 +123,6 @@ def buy_account(request, account_id):
                 return redirect('available_accounts')
 
             # Create the AccountOrder. 
-            # Note: Your model's save() method will automatically deduct the wallet balance,
-            # mark the account as 'sold', and link the buyer!
             AccountOrder.objects.create(
                 user=request.user,
                 account=account,
