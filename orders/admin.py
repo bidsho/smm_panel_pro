@@ -49,7 +49,7 @@ class ServiceAdmin(admin.ModelAdmin):
     def bulk_activate_services(self, request, queryset):
         """Action to instantly set selected services to Active."""
         updated_count = queryset.update(is_active=True)
-        self.message_user(request, f"🟢 Successfully activated {updated_count} services for your users!", level=messages.SUCCESS)
+        self.message_user(request, f"🟢 Successfully activated {updated_count} Instagram services!", level=messages.SUCCESS)
     bulk_activate_services.short_description = "🟢 Mark selected services as ACTIVE"
 
     def bulk_deactivate_services(self, request, queryset):
@@ -78,7 +78,6 @@ class ServiceAdmin(admin.ModelAdmin):
             return redirect("..")
 
         try:
-            # Extended timeout to 25s as pulling every global network payload takes longer
             response = requests.post(
                 'https://justanotherpanel.com/api/v2', 
                 data={'key': api_key, 'action': 'services'},
@@ -97,13 +96,16 @@ class ServiceAdmin(admin.ModelAdmin):
             self.message_user(request, f"API Error Code: {services['error']}", level=messages.ERROR)
             return redirect("..")
 
-        # 💡 FIX: Convert dictionary data payloads to list format if JAP groups them as key-value objects
         if isinstance(services, dict):
             services = list(services.values())
 
         if not isinstance(services, list):
-            self.message_user(request, "API returned an invalid or unrecognized data structure structure.", level=messages.ERROR)
+            self.message_user(request, "API returned an invalid or unrecognized data structure.", level=messages.ERROR)
             return redirect("..")
+
+        # 🗑️ CRITICAL WIPE: Delete ALL existing services in your database before rebuilding.
+        # This instantly purges any old TikTok, Facebook, or non-Instagram services you had saved.
+        Service.objects.all().delete()
 
         created, updated = 0, 0
 
@@ -116,28 +118,26 @@ class ServiceAdmin(admin.ModelAdmin):
         for svc in services:
             if not isinstance(svc, dict) or 'service' not in svc:
                 continue  
-                
+            
+            # 🎯 INSTAGRAM FILTER: Check the category string returned by JAP.
+            category_name = str(svc.get('category', '')).lower()
+            if 'instagram' not in category_name:
+                continue
+
             target_id = safe_int(svc.get('service'))
             if target_id == 0:
                 continue
 
-            existing_service = Service.objects.filter(provider_service_id=target_id).first()
-            
             defaults_dict = {
-                'name': svc.get('name', 'Unnamed Service'),
-                'category': svc.get('category', 'General Social Media'),
+                'name': svc.get('name', 'Unnamed Instagram Service'),
+                'category': svc.get('category', 'Instagram'),
                 'cost_per_1k_usd': svc.get('rate', 0.00),
                 'min_qty': safe_int(svc.get('min', 0)),  
                 'max_qty': safe_int(svc.get('max', 0)),  
+                'is_active': False  # Default all incoming items to False so you can choose which ones to show
             }
-            
-            # 💡 FIX: New services default to False (hidden). 
-            # If an item already exists, we preserve the current status set by the admin.
-            if not existing_service:
-                defaults_dict['is_active'] = False
-            else:
-                defaults_dict['is_active'] = existing_service.is_active
 
+            # Since we deleted all objects above, they will all be fresh creations
             obj, was_created = Service.objects.update_or_create(
                 provider_service_id=target_id,
                 defaults=defaults_dict
@@ -150,7 +150,7 @@ class ServiceAdmin(admin.ModelAdmin):
 
         self.message_user(
             request, 
-            f"Sync complete! Processed all social networks (TikTok, Facebook, Telegram, YouTube, Instagram). New services added: {created}. Existing services updated: {updated}.", 
+            f"Wiped database and performed a fresh import! Successfully parsed only Instagram fields. New services added: {created}.", 
             level=messages.SUCCESS
         )
         return redirect("..")
