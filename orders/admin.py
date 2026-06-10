@@ -78,10 +78,11 @@ class ServiceAdmin(admin.ModelAdmin):
             return redirect("..")
 
         try:
+            # Extended timeout to 25s as pulling every global network payload takes longer
             response = requests.post(
                 'https://justanotherpanel.com/api/v2', 
                 data={'key': api_key, 'action': 'services'},
-                timeout=15
+                timeout=25
             )
             response.raise_for_status()
             services = response.json()
@@ -96,9 +97,16 @@ class ServiceAdmin(admin.ModelAdmin):
             self.message_user(request, f"API Error Code: {services['error']}", level=messages.ERROR)
             return redirect("..")
 
+        # 💡 FIX: Convert dictionary data payloads to list format if JAP groups them as key-value objects
+        if isinstance(services, dict):
+            services = list(services.values())
+
+        if not isinstance(services, list):
+            self.message_user(request, "API returned an invalid or unrecognized data structure structure.", level=messages.ERROR)
+            return redirect("..")
+
         created, updated = 0, 0
 
-        # 💡 Helper function moved to the top of the processing block to protect all logic down-stream
         def safe_int(val):
             try:
                 return int(float(val))
@@ -109,7 +117,6 @@ class ServiceAdmin(admin.ModelAdmin):
             if not isinstance(svc, dict) or 'service' not in svc:
                 continue  
                 
-            # 💡 FIX: Cast the lookup ID to an integer immediately BEFORE running the database query!
             target_id = safe_int(svc.get('service'))
             if target_id == 0:
                 continue
@@ -117,16 +124,19 @@ class ServiceAdmin(admin.ModelAdmin):
             existing_service = Service.objects.filter(provider_service_id=target_id).first()
             
             defaults_dict = {
-                'name': svc.get('name', ''),
-                'category': svc.get('category', ''),
+                'name': svc.get('name', 'Unnamed Service'),
+                'category': svc.get('category', 'General Social Media'),
                 'cost_per_1k_usd': svc.get('rate', 0.00),
                 'min_qty': safe_int(svc.get('min', 0)),  
                 'max_qty': safe_int(svc.get('max', 0)),  
             }
             
-            # If it's a completely brand new service, keep it hidden by default
+            # 💡 FIX: New services default to False (hidden). 
+            # If an item already exists, we preserve the current status set by the admin.
             if not existing_service:
                 defaults_dict['is_active'] = False
+            else:
+                defaults_dict['is_active'] = existing_service.is_active
 
             obj, was_created = Service.objects.update_or_create(
                 provider_service_id=target_id,
@@ -140,7 +150,7 @@ class ServiceAdmin(admin.ModelAdmin):
 
         self.message_user(
             request, 
-            f"Sync complete! Processed all social networks. New services added: {created}. Existing services updated: {updated}.", 
+            f"Sync complete! Processed all social networks (TikTok, Facebook, Telegram, YouTube, Instagram). New services added: {created}. Existing services updated: {updated}.", 
             level=messages.SUCCESS
         )
         return redirect("..")
