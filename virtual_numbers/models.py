@@ -4,7 +4,7 @@ from django.conf import settings
 
 class Country(models.Model):
     name = models.CharField(max_length=100)
-    code = models.CharField(max_length=10, unique=True)
+    code = models.CharField(max_length=50, unique=True)
     flag = models.ImageField(upload_to='flags/', blank=True, null=True)
     active = models.BooleanField(default=True)
 
