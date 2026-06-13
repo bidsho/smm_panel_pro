@@ -43,13 +43,24 @@
         <div class="row gx-5 align-items-center justify-content-center">
             <div class="col-lg-8 col-xl-7 col-xxl-6">
                 <div class="my-5 text-center text-xl-start">
-                    <h1 class="display-3 fw-bolder text-dark mb-2">Grow Your Social Presence <span class="text-primary">Instantly</span></h1>
-                    <p class="lead fw-normal text-muted mb-4">The most affordable SMM Panel in Nigeria. High-quality followers, likes, and views for Instagram, TikTok, and Facebook starting from ₦50.</p>
-                    <div class="d-grid gap-3 d-sm-flex justify-content-sm-center justify-content-xl-start">
-                        <a class="btn btn-primary btn-lg px-5 py-3 fw-bold shadow-lg rounded-3" href="{% url 'signup' %}">Get Started Now</a>
-                        <a class="btn btn-outline-dark btn-lg px-5 py-3 fw-bold rounded-3" href="{% url 'login' %}">Login</a>
-                    </div>
-                </div>
+    <h1 class="display-3 fw-bolder text-dark mb-2">Grow Your Social Presence <span class="text-primary">Instantly</span></h1>
+    <p class="lead fw-normal text-muted mb-4">The most affordable SMM Panel in Nigeria. High-quality followers, likes, and views for Instagram, TikTok, and Facebook starting from ₦50. Plus, buy social media accounts and virtual numbers for verification.</p>
+
+    <div class="d-grid gap-3 d-sm-flex justify-content-sm-center justify-content-xl-start mb-4">
+        <a class="btn btn-primary btn-lg px-5 py-3 fw-bold shadow-lg rounded-3" href="{% url 'signup' %}">Get Started Now</a>
+        <a class="btn btn-outline-dark btn-lg px-5 py-3 fw-bold rounded-3" href="{% url 'login' %}">Login</a>
+    </div>
+
+    <!-- Quick links to other services -->
+    <div class="d-flex flex-wrap gap-2 justify-content-center justify-content-xl-start">
+        <a href="{% url 'available_accounts' %}" class="badge bg-light text-dark text-decoration-none p-2 px-3 rounded-pill border">
+            <i class="fas fa-users text-primary me-1"></i> Buy Social Accounts
+        </a>
+        <a href="{% url 'virtual_numbers:number_list' %}" class="badge bg-light text-dark text-decoration-none p-2 px-3 rounded-pill border">
+            <i class="fas fa-sim-card text-success me-1"></i> Buy Virtual Numbers
+        </a>
+    </div>
+</div>
             </div>
             <div class="col-xl-5 col-xxl-6 d-none d-xl-block text-center">
                 <img class="img-fluid rounded-3 my-5" src="https://img.freepik.com/free-vector/social-media-marketing-concept-marketing-strategy-digital-advertising-campaign-optimization-isolated-flat-vector-illustration_613284-1188.jpg" alt="SMM Marketing Illustration" />
