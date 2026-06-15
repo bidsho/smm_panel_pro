@@ -149,3 +149,54 @@ class ServiceAdmin(admin.ModelAdmin):
         )
 
         return redirect("..")
+
+
+@admin.register(Order)
+class OrderAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'user',
+        'service',
+        'quantity',
+        'total_price',
+        'status',
+        'created_at'
+    )
+    list_filter = ('status', 'created_at')
+    search_fields = ('user__username', 'id', 'api_order_id')
+    raw_id_fields = ('user', 'service')
+    ordering = ('-created_at',)
+
+
+@admin.register(SocialAccount)
+class SocialAccountAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'platform',
+        'username',
+        'price',
+        'status',
+        'followers_count',
+        'created_at'
+    )
+    list_filter = ('platform', 'status', 'created_at')
+    search_fields = ('username', 'email', 'description')
+    list_editable = ('status',)
+    raw_id_fields = ('uploaded_by', 'bought_by')
+    ordering = ('-created_at',)
+
+
+@admin.register(AccountOrder)
+class AccountOrderAdmin(admin.ModelAdmin):
+    list_display = (
+        'id',
+        'user',
+        'account',
+        'amount_paid',
+        'status',
+        'created_at'
+    )
+    list_filter = ('status', 'created_at')
+    search_fields = ('user__username', 'account__username', 'id')
+    raw_id_fields = ('user', 'account')
+    ordering = ('-created_at',)        
