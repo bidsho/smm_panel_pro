@@ -10,7 +10,7 @@ import requests
 from wallets.models import Wallet, Transaction as WalletTransaction
 
 def place_jap_order(order):
-    api_key = "ec8f0f2d3e2095e016db0922e0d04788"
+    api_key = "8887f923b8b2bf0566e6c879f00e3efe"
     api_url = "https://justanotherpanel.com/api/v2"
     
     payload = {
