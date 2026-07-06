@@ -37,7 +37,8 @@ def number_list(request):
                     'country': selected_country,
                     'service': selected_service,
                     'price_usd': service_data.get('Price', 0),
-                    'price_ngn': fivesim.calculate_price(service_data.get('Price', 0)),
+                    # Force the fixed price here
+                    'price_ngn': 5000, 
                     'count': service_data.get('Qty', 0),
                 }]
             else:
@@ -52,54 +53,40 @@ def number_list(request):
         'selected_country': selected_country,
         'selected_service': selected_service,
     })
-
-
 @login_required
 def buy_number(request):
-    if request.method == 'POST':
-        country = request.POST.get('country')
-        service = request.POST.get('service')
-    else:
-        country = request.GET.get('country')
-        service = request.GET.get('service')
+    # Enforce fixed price
+    FIXED_PRICE = Decimal('5000.00')
+
+    # Get country/service
+    country = request.POST.get('country') or request.GET.get('country')
+    service = request.POST.get('service') or request.GET.get('service')
 
     if not country or not service:
         messages.error(request, 'Country or service missing.')
         return redirect('virtual_numbers:number_list')
 
-    try:
-        service_data = fivesim.get_products(country, service)
-        if not service_data:
-            messages.error(request, 'Service not available for this country.')
-            return redirect('virtual_numbers:number_list')
-        price_ngn = Decimal(str(fivesim.calculate_price(service_data.get('Price', 0))))
-    except Exception as e:
-        messages.error(request, f'Failed to get price: {str(e)}')
-        return redirect('virtual_numbers:number_list')
-
     wallet = request.user.wallet
 
     if request.method == 'POST':
-        if wallet.balance < price_ngn:
-            messages.error(request, f'Insufficient balance. Your balance is ₦{wallet.balance} but price is ₦{price_ngn}')
+        if wallet.balance < FIXED_PRICE:
+            messages.error(request, f'Insufficient balance. Price is ₦{FIXED_PRICE}')
             return redirect('virtual_numbers:number_list')
 
         result = fivesim.buy_number(country, service)
-
         if 'error' in result or 'id' not in result:
             messages.error(request, f'5sim error: {result}')
             return redirect('virtual_numbers:number_list')
 
-        # Deduct wallet
-        wallet.balance -= price_ngn
+        # Deduct fixed price
+        wallet.balance -= FIXED_PRICE
         wallet.save()
 
-        # Get or create country
         country_obj, _ = Country.objects.get_or_create(
-            code=country,
-            defaults={'name': country.title()}
+            code=country, defaults={'name': country.title()}
         )
 
+        # Create record with forced price and values for required fields
         purchased = PurchasedNumber.objects.create(
             user=request.user,
             country=country_obj,
@@ -107,21 +94,21 @@ def buy_number(request):
             phone_number=result['phone'],
             provider='5sim',
             provider_order_id=str(result['id']),
-            price=price_ngn,
-            status='pending'
+            status='pending',
+            cost_price_usd=Decimal('0.00'),
+            cost_price_ngn=Decimal('0.00'),
+            price=FIXED_PRICE
         )
 
-        messages.success(request, f'Number {result["phone"]} assigned!')
+        messages.success(request, f'Number assigned at ₦{FIXED_PRICE}!')
         return redirect('virtual_numbers:number_detail', pk=purchased.pk)
 
     return render(request, 'virtual_numbers/buy_number.html', {
         'country': country,
         'service': service,
-        'price_ngn': price_ngn,
+        'price_ngn': FIXED_PRICE,
         'wallet': wallet,
     })
-
-
 @login_required
 def number_detail(request, pk):
     number = get_object_or_404(PurchasedNumber, pk=pk, user=request.user)
